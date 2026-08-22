@@ -1,0 +1,244 @@
+/*
+ * Shared styling for the two guides.
+ *
+ * Standalone pages rather than React routes: they are documents, they should
+ * open instantly, and they must keep working if the app itself is broken,
+ * which is exactly when someone reaches for the manual. Tokens are copied from
+ * src/render/theme.ts; docs/DESIGN.md is the rationale for every value.
+ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-var.woff2') format('woff2-variations');
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/ibm-plex-sans-var.woff2') format('woff2-variations');
+  font-weight: 100 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/ibm-plex-mono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/ibm-plex-mono-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+:root {
+  --void: #07090d;
+  --canvas: #0a0e14;
+  --chassis: #0e131a;
+  --raised: #151c25;
+  --grid: #161d27;
+  --hair: #1e2732;
+  --edge: #2a3542;
+  --hi: #e3e9f0;
+  --mid: #94a3b4;
+  --lo: #647180;
+  --focus: #eaf1f8;
+  --bad: #e4586b;
+  --neg: #3ec5e8;
+  --pos: #f2a33c;
+  --display: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* Anchor targets must clear the sticky nav, or a jump lands with the
+     heading hidden behind it. */
+  scroll-padding-top: 64px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--hi);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.chrome {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+  background: var(--chassis);
+  border-bottom: 1px solid var(--hair);
+}
+.chrome a { color: var(--mid); text-decoration: none; font-size: 13px; }
+.chrome a:hover { color: var(--hi); }
+.chrome .wordmark {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--hi);
+  letter-spacing: -0.01em;
+}
+.chrome .spacer { margin-left: auto; }
+
+main {
+  max-width: 760px;          /* ~72 characters: a comfortable measure */
+  margin: 0 auto;
+  padding: 48px 24px 120px;
+}
+
+h1 {
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.lede { color: var(--mid); font-size: 17px; margin: 0 0 48px; }
+
+h2 {
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 56px 0 4px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hair);
+}
+h3 {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 32px 0 4px;
+  color: var(--hi);
+}
+p { margin: 12px 0; color: var(--hi); }
+p.quiet { color: var(--mid); }
+
+code, .num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+  color: var(--focus);
+  background: var(--raised);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+pre {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--canvas);
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+  padding: 16px;
+  overflow-x: auto;
+  color: var(--mid);
+  margin: 20px 0;
+}
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .k { color: var(--hi); }
+pre .n { color: var(--neg); }
+pre .p { color: var(--pos); }
+pre .c { color: var(--lo); }
+
+ul, ol { padding-left: 22px; margin: 12px 0; }
+li { margin: 7px 0; }
+
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lo);
+  font-weight: 500;
+}
+td:first-child { white-space: nowrap; }
+td code { white-space: nowrap; }
+
+.note {
+  border-left: 2px solid var(--edge);
+  padding: 2px 0 2px 16px;
+  margin: 20px 0;
+  color: var(--mid);
+  font-size: 14px;
+}
+.note strong { color: var(--hi); font-weight: 600; }
+.note.warn { border-left-color: var(--bad); }
+
+.swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  margin-right: 5px;
+}
+.swatch.neg { background: var(--neg); }
+.swatch.pos { background: var(--pos); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 40px;
+  margin: 24px 0;
+}
+.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--lo);
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+}
+.steps > li strong { display: block; color: var(--hi); font-weight: 600; }
+
+kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  color: var(--hi);
+}
+
+.toc { background: var(--chassis); border: 1px solid var(--hair); border-radius: 2px; padding: 16px 20px; margin: 0 0 48px; }
+.toc p { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lo); margin: 0 0 8px; }
+.toc ol { margin: 0; padding-left: 20px; }
+.toc a { color: var(--mid); text-decoration: none; }
+.toc a:hover { color: var(--hi); text-decoration: underline; }
+
+a { color: var(--focus); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  main { padding: 32px 18px 80px; }
+  h1 { font-size: 27px; }
+}

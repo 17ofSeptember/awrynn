@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Start here · AwryNN</title>
+<meta name="description" content="A neural network explained from zero, using the numbers on your own screen.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/guide/guide.css">
+</head>
+<body>
+
+<nav class="chrome">
+  <span class="wordmark">AwryNN</span>
+  <a href="/">← Back to the app</a>
+  <span class="spacer"></span>
+  <a href="/guide/handbook.html">Handbook →</a>
+</nav>
+
+<main>
+<h1>Start here</h1>
+<p class="lede">
+  You do not need any maths background to read this. By the end you will know what
+  every mark on the screen means, and you will have watched a network do one piece
+  of arithmetic from start to finish.
+</p>
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#what">What this thing actually is</a></li>
+    <li><a href="#neuron">One neuron, completely</a></li>
+    <li><a href="#screen">What is on your screen</a></li>
+    <li><a href="#colours">Reading the colours</a></li>
+    <li><a href="#walk">Watch one number travel</a></li>
+    <li><a href="#learn">How it learns</a></li>
+    <li><a href="#try">Five things to try</a></li>
+    <li><a href="#words">Every word, defined</a></li>
+  </ol>
+</div>
+
+<h2 id="what">1. What this thing actually is</h2>
+
+<p>
+  A neural network is a <strong>machine for guessing</strong>. You give it some
+  numbers, it does a lot of multiplying and adding, and out comes a guess.
+</p>
+<p>
+  That is genuinely all it is. There is no thinking inside it. The thing that
+  makes it interesting is the second half: when its guess is wrong, it can work
+  out <em>which of its numbers to nudge, and in which direction</em>, so that
+  next time the guess is a little less wrong. Do that a few thousand times and
+  the guesses get good.
+</p>
+<p>
+  Everything in AwryNN is that one idea, made visible. The app is not a diagram
+  of a neural network. It <em>is</em> one, running in your browser, and every
+  number you see on screen is a number it really computed.
+</p>
+
+<div class="note">
+  <strong>The example we will use.</strong> The default screen shows a network
+  learning to separate two interleaving crescent shapes, the <code>moons</code>
+  dataset. Each dot in that dataset has two numbers (a left-right position and an
+  up-down position) and belongs to one of two groups. The network's job is to
+  look at the two numbers and say which group.
+</div>
+
+<h2 id="neuron">2. One neuron, completely</h2>
+
+<p>
+  Every circle on the canvas is a <strong>neuron</strong>. A neuron does exactly
+  three things, in order. Nothing else.
+</p>
+
+<ol class="steps">
+  <li>
+    <strong>It multiplies each incoming number by a weight.</strong>
+    A <em>weight</em> is just a number the network stores. If a weight is large,
+    that input matters a lot to this neuron. If it is near zero, that input is
+    being ignored. If it is negative, that input pushes the neuron the other way.
+  </li>
+  <li>
+    <strong>It adds all of those up, plus a bias.</strong>
+    The <em>bias</em> is one more stored number, added on at the end regardless of
+    the input. It shifts the neuron's whole response up or down. The running total
+    is called <code>z</code>.
+  </li>
+  <li>
+    <strong>It squashes the total through an activation function.</strong>
+    The result is called <code>a</code>. This step is what stops the whole network
+    collapsing into something trivial. More on that below.
+  </li>
+</ol>
+
+<p>Written out, for a neuron with two inputs:</p>
+
+<pre><code><span class="c">z = (weight₁ × input₁) + (weight₂ × input₂) + bias</span>
+<span class="c">a = squash(z)</span></code></pre>
+
+<p>
+  Here is a real one, copied from the app's own display:
+</p>
+
+<pre><code><span class="c">Z  LAYER 2 · UNIT 0</span>
+   (<span class="p">+0.73</span>)(<span class="n">−0.12</span>)     <span class="n">−0.085</span>
+ + (<span class="p">+0.65</span>)(<span class="n">−0.16</span>)     <span class="n">−0.106</span>
+ + (<span class="n">−0.52</span>)(<span class="p">+0.42</span>)     <span class="n">−0.216</span>
+ + (<span class="n">−0.65</span>)(<span class="p">+0.04</span>)     <span class="n">−0.029</span>
+ + (<span class="n">−0.60</span>)(<span class="n">−0.07</span>)     <span class="p">+0.044</span>
+ + (<span class="n">−0.10</span>)(<span class="p">+0.12</span>)     <span class="n">−0.012</span>
+ + bias               <span class="p">+0.000</span>
+<span class="k">z =                  −0.4043</span></code></pre>
+
+<p>
+  Six inputs, six weights, six products, added up, plus a bias of zero. Add the
+  right-hand column yourself: it comes to <code>−0.404</code>. That is not a
+  mock-up. That is the app showing its working.
+</p>
+
+<h3>Why the squashing step exists</h3>
+<p>
+  Multiplying and adding is a <em>straight-line</em> operation. If you stack a
+  hundred layers that only multiply and add, the whole stack still only draws a
+  straight line, so you have gained nothing. The squashing function bends the
+  result, and it is that bend, repeated across layers, that lets a network carve
+  out curved and complicated shapes.
+</p>
+<p>
+  The default here is <code>tanh</code>, which takes any number and squeezes it
+  into the range −1 to +1. Very negative in, close to −1 out; very positive in,
+  close to +1 out; near zero in, near zero out.
+</p>
+
+<h2 id="screen">3. What is on your screen</h2>
+
+<p>Left to right, and top to bottom.</p>
+
+<table>
+  <thead><tr><th>Where</th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Architecture</strong><br>(left panel)</td><td>The shape of the network. <code>2-6-4-1</code> means: 2 numbers in, then a layer of 6 neurons, then 4, then 1 number out. The <code>+</code> and <code>−</code> buttons add and remove neurons; the dropdown changes the squashing function for that layer.</td></tr>
+    <tr><td><strong>Dataset</strong><br>(left panel)</td><td>Which pile of example data the network is looking at. Changing it changes the problem. The app resizes the input and output layers to fit, and tells you what it changed.</td></tr>
+    <tr><td><strong>Display</strong><br>(left panel)</td><td>Show or hide the small bias circles, and switch on a colourblind-safe mode that adds a dash pattern to negative connections.</td></tr>
+    <tr><td><strong>The canvas</strong><br>(middle)</td><td>The network itself. Circles are neurons, lines are weights. Scroll to zoom, drag to pan, double-click to fit it back on screen.</td></tr>
+    <tr><td><strong>Weight</strong><br>(bottom-left of canvas)</td><td>The key to the colours, with the actual number the scale runs to. If it says <span class="num">±0.73</span>, the thickest lines on screen are weights of about that size.</td></tr>
+    <tr><td><strong>Transport</strong><br>(bottom bar)</td><td>Turns the slow-motion dissection on, and steps through it.</td></tr>
+    <tr><td><strong>Inspector</strong><br>(right panel)</td><td>Point at anything on the canvas and its exact value appears here as a number.</td></tr>
+    <tr><td><strong>Network</strong><br>(right panel)</td><td>Summary: how many numbers the network is storing in total, how many layers, and which scoring rule it is using.</td></tr>
+  </tbody>
+</table>
+
+<h3>The small circles marked <code>b</code></h3>
+<p>
+  Those are the biases, one per neuron, each drawn as its own little satellite. Most
+  diagrams leave biases out entirely, which is why so many people come away
+  believing a neuron is only a weighted sum. It is not. The bias is a real stored
+  number and it is drawn here so you can see it and change it.
+</p>
+<p class="quiet">
+  When you first load the app every bias is exactly zero, so those satellites and
+  their connections look faint. That is honest: they have not learned anything yet.
+</p>
+
+<h2 id="colours">4. Reading the colours</h2>
+
+<p>The whole app is built on one colour idea, and it only encodes one thing.</p>
+
+<table>
+  <thead><tr><th>Mark</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><span class="swatch neg"></span>Cool blue</td><td>A <strong>negative</strong> weight. This connection pushes the receiving neuron <em>down</em>.</td></tr>
+    <tr><td><span class="swatch pos"></span>Warm amber</td><td>A <strong>positive</strong> weight. This connection pushes the receiving neuron <em>up</em>.</td></tr>
+    <tr><td>Thick line</td><td>A weight with a <strong>large</strong> value. This connection matters.</td></tr>
+    <tr><td>Faint hairline</td><td>A weight near <strong>zero</strong>. This connection is being ignored. Watch these fade out as a network learns which inputs are irrelevant.</td></tr>
+    <tr><td>Filled circle</td><td>How strongly that neuron is firing for the sample being shown.</td></tr>
+    <tr><td>Hollow circle</td><td>A <strong>dead</strong> neuron. It has not fired once in a whole pass through the data. Usually a sign something has gone wrong.</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>Colour only ever means sign, and thickness only ever means size.</strong>
+  Nothing else in the interface uses these two colours, so if you see blue or
+  amber anywhere, it is telling you about a number's sign. Selections and
+  highlights are deliberately plain white for exactly this reason.
+</div>
+
+<h2 id="walk">5. Watch one number travel</h2>
+
+<p>
+  This is the part worth doing slowly. Go to the app and press
+  <strong>Dissection: off</strong> in the bottom bar to switch it on. Then press
+  <kbd>Space</kbd> repeatedly. Each press advances one stage and stops.
+</p>
+
+<ol class="steps">
+  <li>
+    <strong>Inputs</strong>
+    The two input circles light up and their values appear beside them. This is
+    one single example from the dataset: one dot, two numbers.
+  </li>
+  <li>
+    <strong>Layer 1: weighted sum</strong>
+    Dots travel along the connections from the inputs into the first layer. A
+    <em>fat</em> dot is a big contribution; a <em>thin</em> one is barely
+    contributing. Its colour tells you whether it is pushing up or down.
+    <br><br>
+    The size follows the <em>contribution</em>, meaning weight × input, not the weight
+    on its own. A huge weight multiplied by an input of nearly zero contributes
+    nothing, and it would be misleading to draw it fat.
+    <br><br>
+    As each dot lands, its term appears on the card beside the neuron and the
+    running total ticks over. You are watching a sum being built.
+  </li>
+  <li>
+    <strong>Layer 1: activation</strong>
+    The total <code>z</code> settles, and a small graph appears showing the
+    squashing function. A dot travels along the bottom axis to where
+    <code>z</code> sits, then rises to meet the curve. Where it lands is
+    <code>a</code>, the neuron's output. The neuron then fills in to match.
+  </li>
+  <li>
+    <strong>The same, layer by layer</strong>
+    Each layer's outputs become the next layer's inputs. Finished neurons shrink
+    to a compact <code>z / a</code> chip so you can still see what they settled on.
+  </li>
+  <li>
+    <strong>Loss</strong>
+    A card appears with three numbers: what the network <em>guessed</em>, what the
+    correct answer <em>was</em>, and a single number scoring how wrong it was. That
+    score is the <strong>loss</strong>. Zero would be perfect. Bigger is worse.
+  </li>
+</ol>
+
+<p class="quiet">
+  Click any neuron to move the detailed card onto it. On a wide layer only one
+  neuron shows its full working at a time, because six cards at once would be
+  unreadable, so you pick which one you are reading.
+</p>
+
+<h2 id="learn">6. How it learns</h2>
+
+<p>
+  Keep pressing <kbd>Space</kbd> past the loss card and the animation reverses.
+  It now flows right to left. This is <strong>backpropagation</strong>, and it is
+  the only genuinely clever idea in the whole subject.
+</p>
+<p>
+  The question it answers is: <em>for each of the network's stored numbers, would
+  nudging it up make the loss better or worse, and by how much?</em>
+</p>
+<p>
+  Answering that for one number is easy: try it and see. Answering it for all of
+  them one at a time would be impossibly slow. Backpropagation gets the answer for
+  <em>every</em> weight in one sweep backwards, by reusing work as it goes.
+</p>
+
+<p>Here is a card from that sweep, again straight off the screen:</p>
+
+<pre><code><span class="c">W[0, 0]</span>
+∂L/∂w = (<span class="p">+0.504</span>)(<span class="n">−0.384</span>)
+      = <span class="n">−0.1932</span>
+Δw = −0.100 × ∂L/∂w = <span class="p">+0.0193</span></code></pre>
+
+<p>Line by line:</p>
+<ul>
+  <li>
+    <code>∂L/∂w</code> is unfriendly notation for a friendly idea: <strong>how much
+    the loss changes when this one weight changes</strong>. It is called the
+    <em>gradient</em>. Here it is <code>−0.1932</code>, meaning: increase this
+    weight a little and the loss goes <em>down</em> a little.
+  </li>
+  <li>
+    So we should increase it. <code>Δw</code> ("delta w") is the change we actually
+    make: <code>+0.0193</code>.
+  </li>
+  <li>
+    The <code>−0.100</code> is the <strong>learning rate</strong>, meaning how big a step
+    to take. Too small and learning crawls. Too big and it overshoots and flies
+    apart. It is the single most important dial in the whole subject.
+  </li>
+</ul>
+
+<p>
+  Then the connection visibly re-weights, and that is one learning step, for one
+  weight, from one example. Real training does this for every weight, over and
+  over, thousands of times.
+</p>
+
+<div class="note">
+  <strong>Why the minus sign?</strong> The gradient points in the direction that
+  makes the loss <em>bigger</em>. We want smaller, so we step the opposite way,
+  hence <code>Δw = −learning rate × gradient</code>. That is the whole of
+  "gradient descent": walk downhill by repeatedly stepping against the slope.
+</div>
+
+<h2 id="try">7. Five things to try</h2>
+
+<ol class="steps">
+  <li>
+    <strong>Turn a weight up and watch nothing happen.</strong>
+    Hover a hairline-thin connection and read its value in the inspector. Those
+    near-zero weights are connections the network has decided not to use.
+  </li>
+  <li>
+    <strong>Change every layer to <code>linear</code>.</strong>
+    <code>linear</code> means "no squashing at all". The network becomes a plain
+    straight-line machine, no matter how many layers you give it. This is the
+    single best demonstration of why the squashing step exists.
+  </li>
+  <li>
+    <strong>Press Reseed a few times.</strong>
+    Every weight is re-randomised. Same shape, same data, completely different
+    starting numbers, and if you trained it, a different solution each time.
+    There is no single right answer inside a network.
+  </li>
+  <li>
+    <strong>Switch the dataset to <code>glyphs</code>.</strong>
+    Suddenly there are 35 inputs, one per pixel of a tiny 7×5 letter, and 10
+    outputs, one per possible answer. Nothing about the machinery changed. That
+    is the whole leap from a toy to real image recognition.
+  </li>
+  <li>
+    <strong>Step through the same sample twice.</strong>
+    Identical numbers, every time. Nothing here is random once the seed is fixed,
+    which is what lets you check the app's arithmetic against your own.
+  </li>
+</ol>
+
+<h2 id="words">8. Every word, defined</h2>
+
+<table>
+  <thead><tr><th>Word</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Neuron</strong></td><td>One circle. Multiplies its inputs by weights, adds them plus a bias, squashes the result.</td></tr>
+    <tr><td><strong>Weight</strong></td><td>A stored number on a connection. How much one neuron's output matters to the next.</td></tr>
+    <tr><td><strong>Bias</strong></td><td>A stored number added on regardless of input. Shifts a neuron's whole response.</td></tr>
+    <tr><td><strong>Parameter</strong></td><td>Any stored number: every weight and every bias. The right panel counts them.</td></tr>
+    <tr><td><strong>Layer</strong></td><td>A column of neurons that all read the same inputs.</td></tr>
+    <tr><td><strong><code>z</code></strong></td><td>A neuron's running total, before squashing.</td></tr>
+    <tr><td><strong><code>a</code></strong></td><td>A neuron's output, after squashing. This is what travels onward.</td></tr>
+    <tr><td><strong>Activation function</strong></td><td>The squashing step. <code>tanh</code>, <code>sigmoid</code>, <code>relu</code> and friends.</td></tr>
+    <tr><td><strong>Forward pass</strong></td><td>Inputs to guess. Left to right.</td></tr>
+    <tr><td><strong>Loss</strong></td><td>One number scoring how wrong a guess was. Lower is better.</td></tr>
+    <tr><td><strong>Gradient</strong></td><td>How much the loss would change if one parameter changed. Written <code>∂L/∂w</code>.</td></tr>
+    <tr><td><strong>Backpropagation</strong></td><td>The right-to-left sweep that computes every gradient in one go.</td></tr>
+    <tr><td><strong>Learning rate</strong></td><td>How big a step to take. Too big diverges, too small crawls.</td></tr>
+    <tr><td><strong>Epoch</strong></td><td>One complete pass through all the training data.</td></tr>
+    <tr><td><strong>Seed</strong></td><td>The number that fixes all the randomness, so a run can be repeated exactly.</td></tr>
+    <tr><td><strong>Dead neuron</strong></td><td>One that never fires. Drawn hollow. Usually caused by too high a learning rate.</td></tr>
+    <tr><td><strong>Batch norm</strong></td><td>A switch that makes each layer rescale its numbers to a familiar size before passing them on, so the layer above is not learning against a moving target. Columns using it are labelled <code>·bn</code>.</td></tr>
+  </tbody>
+</table>
+
+<h2>Where to go next</h2>
+<p>
+  If the ideas above landed, the <a href="/guide/handbook.html">Handbook</a> covers
+  how to actually drive the instrument: what every control does, the conventions
+  the maths uses, and how to check the app's arithmetic against your own.
+</p>
+<p class="quiet">
+  And if you take one thing away: every number you saw was real. There is a button
+  in this app that will verify its own calculus against a numerical estimate and
+  show you the error. Not many teaching tools will let you audit them.
+</p>
+
+</main>
+</body>
+</html>

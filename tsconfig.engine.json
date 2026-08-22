@@ -1,0 +1,21 @@
+{
+  /*
+   * Enforcement of spec §0.5: "The engine is sacred."
+   *
+   * This config re-checks src/engine/** with NO `DOM` lib and NO ambient @types
+   * packages. If anyone reaches for `window`, `document`, `console`, a React
+   * import, or the store, this build fails — the rule is caught by the type
+   * checker at authoring time rather than by code review. `npm run build`
+   * depends on it.
+   *
+   * Tests are excluded: the test harness legitimately uses node APIs (reading
+   * the engine source tree to grep for Math.random).
+   */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/engine"],
+  "exclude": ["src/engine/__tests__"]
+}

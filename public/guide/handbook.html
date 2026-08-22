@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Handbook · AwryNN</title>
+<meta name="description" content="Operating manual: conventions, controls, and how to verify the engine.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/guide/guide.css">
+</head>
+<body>
+
+<nav class="chrome">
+  <span class="wordmark">AwryNN</span>
+  <a href="/">← Back to the app</a>
+  <span class="spacer"></span>
+  <a href="/guide/start-here.html">← Start here</a>
+</nav>
+
+<main>
+<h1>Handbook</h1>
+<p class="lede">
+  For readers who already know roughly what a network does. What this
+  implementation commits to, what every control does, and how to check its
+  arithmetic against your own.
+</p>
+
+<div class="toc">
+  <p>On this page</p>
+  <ol>
+    <li><a href="#claim">The claim, and how to test it</a></li>
+    <li><a href="#conventions">Conventions</a></li>
+    <li><a href="#controls">Controls</a></li>
+    <li><a href="#dissection">Driving the dissection</a></li>
+    <li><a href="#encoding">Visual encoding, precisely</a></li>
+    <li><a href="#determinism">Determinism</a></li>
+    <li><a href="#sharing">Sharing a network</a></li>
+    <li><a href="#batchnorm">Batch normalisation</a></li>
+    <li><a href="#numerics">Numerical decisions worth knowing</a></li>
+    <li><a href="#scope">What is and is not implemented</a></li>
+  </ol>
+</div>
+
+<h2 id="claim">1. The claim, and how to test it</h2>
+
+<p>
+  The engine is written from scratch, with no TensorFlow.js, no ONNX and no autodiff
+  library. Forward pass, backpropagation, optimizers and regularization are
+  plain TypeScript over <code>Float64Array</code>, and every number the interface
+  shows is read back from that engine rather than recomputed for display.
+</p>
+<p>
+  That is an easy thing to claim and a hard thing to earn, so here is how it is
+  substantiated.
+</p>
+
+<h3>Analytic gradients are checked against numerical ones</h3>
+<p>
+  The suite runs a full matrix, <code>{linear, relu, leaky_relu, tanh, sigmoid}
+  × {mse, bce, cce} × {with, without L2} × {2-1, 2-4-1, 2-8-6-3}</code>, skipping
+  invalid combinations, comparing every analytic gradient against a numerical
+  estimate. 60 configurations, 2,379 parameters. Worst relative error:
+  <code>1.09e-9</code> against a <code>1e-7</code> threshold.
+</p>
+
+<div class="note">
+  <strong>Why not a plain central difference at a single ε?</strong> Central
+  differences trade truncation error (∝ h²) against roundoff (∝ 1/h), so the best
+  step size depends on <code>|L|/|g|</code> and no constant is right everywhere.
+  At ε = 1e-5 the worst coordinate here reaches <code>1.44e-7</code> and fails,
+  not because the gradient is wrong, but because float64 cannot resolve that
+  difference. Richardson extrapolation cancels the h² term, so the step can stay
+  large enough that roundoff never bites:
+  <code>R(h) = (4·D(h/2) − D(h)) / 3</code>. Plain differences are kept as
+  fallbacks, and win on ReLU, which is piecewise linear and needs no extrapolation.
+</div>
+
+<h3>The dissection is checked against the engine's own caches</h3>
+<p>
+  Every formula card reads <code>W</code>, <code>b</code>, <code>Z</code>,
+  <code>A</code> and <code>dW</code> out of the engine after a real
+  forward/backward pass. The only value computed for display is the per-term
+  product <code>w·a</code>, because the engine goes straight to a dot product and
+  never materialises individual terms.
+</p>
+<p>
+  So that one computation is audited. Each neuron carries a <em>residual</em>:
+  the sum of the terms as displayed, minus the <code>z</code> the engine actually
+  cached. Across the full matrix the worst residual is under <code>1e-9</code>,
+  which is float reassociation and nothing more. A card showing arithmetic that
+  did not add up would fail the test suite.
+</p>
+
+<h3>Determinism is bitwise</h3>
+<p>
+  Same seed, same config, same number of steps ⇒ byte-identical parameter arrays.
+  Asserted over 100 training steps by comparing raw bytes, not with a tolerance.
+</p>
+
+<h2 id="conventions">2. Conventions</h2>
+
+<p>Row-major batch convention throughout. Mixing conventions is the classic source of backprop bugs, so this is fixed.</p>
+
+<table>
+  <thead><tr><th>Symbol</th><th>Shape</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>X</code></td><td><code>[B, n₀]</code></td><td>Batch input, one <strong>row</strong> per sample</td></tr>
+    <tr><td><code>W⁽ˡ⁾</code></td><td><code>[n_{l-1}, n_l]</code></td><td>Layer weights</td></tr>
+    <tr><td><code>b⁽ˡ⁾</code></td><td><code>[1, n_l]</code></td><td>Biases, broadcast down the batch</td></tr>
+    <tr><td><code>Z⁽ˡ⁾, A⁽ˡ⁾</code></td><td><code>[B, n_l]</code></td><td>Pre-activations and activations</td></tr>
+  </tbody>
+</table>
+
+<pre><code><span class="c">forward</span>
+Z⁽ˡ⁾ = A⁽ˡ⁻¹⁾ · W⁽ˡ⁾ + 1_B · b⁽ˡ⁾
+A⁽ˡ⁾ = φ⁽ˡ⁾(Z⁽ˡ⁾)
+
+<span class="c">backward</span>
+dZ⁽ˡ⁾   = dA⁽ˡ⁾ ⊙ φ′⁽ˡ⁾(Z⁽ˡ⁾)
+dW⁽ˡ⁾   = (A⁽ˡ⁻¹⁾)ᵀ · dZ⁽ˡ⁾ / B     <span class="c">← divided here</span>
+db⁽ˡ⁾   = colSum(dZ⁽ˡ⁾) / B          <span class="c">← and here</span>
+dA⁽ˡ⁻¹⁾ = dZ⁽ˡ⁾ · (W⁽ˡ⁾)ᵀ            <span class="c">← NOT divided</span></code></pre>
+
+<div class="note">
+  <strong>The divide-by-B convention.</strong> Unaveraged per-sample gradients
+  propagate through the network; the division by <code>B</code> happens exactly
+  once, when parameter gradients are formed. Divide in <code>dA⁽ˡ⁻¹⁾</code> as
+  well and every gradient picks up an extra <code>1/B</code> per layer, which
+  presents as "training is just slow" rather than as a bug. There is a test:
+  a batch of two identical rows must produce the same gradients as a batch of one.
+</div>
+
+<h3>Fused output gradients</h3>
+<p>
+  <code>softmax + cce</code> and <code>sigmoid + bce</code> are detected
+  explicitly and take the analytically simplified path
+  <code>dZ⁽ᴸ⁾ = Ŷ − Y</code>. Both cancellations remove a division by a quantity
+  that goes to zero exactly when the network is confident, so the fused path is
+  the numerically stable one as well as the fast one.
+</p>
+<p class="quiet">
+  The unfused gradients are implemented too, purely so the test suite can verify
+  the cancellation numerically, the softmax case against the full dense Jacobian,
+  rather than taking the derivation on trust. The right panel reports which
+  path a given configuration is on.
+</p>
+
+<h3>Validation, not silent fallback</h3>
+<p>
+  <code>softmax</code> is legal only as the final activation and only with
+  <code>cce</code>; <code>bce</code> requires a single sigmoid unit. Invalid
+  combinations produce a written explanation in the architecture panel and the
+  last good network stays on screen. Nothing is silently coerced.
+</p>
+
+<h2 id="controls">3. Controls</h2>
+
+<table>
+  <thead><tr><th>Control</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Architecture</strong></td><td><code>+</code>/<code>−</code> resize a layer; the dropdown sets its activation; <code>×</code> removes a hidden layer. Any edit rebuilds the network and reports validation errors inline.</td></tr>
+    <tr><td><strong>Dataset</strong></td><td>Switching regenerates the data <em>and</em> reconciles the architecture (input width, loss and output layer) in one atomic update, then tells you what it changed and what it preserved. Hidden layers survive.</td></tr>
+    <tr><td><strong>Seed</strong></td><td>Fixes every stochastic stream. <strong>Reseed</strong> increments it, re-initialising all weights with the same architecture.</td></tr>
+    <tr><td><strong>Bias satellites</strong></td><td>Show or hide the per-neuron bias nodes and their connections.</td></tr>
+    <tr><td><strong>Colourblind-safe</strong></td><td>Adds a dash pattern to negative weights, on top of the hue difference.</td></tr>
+    <tr><td><strong>Canvas</strong></td><td>Scroll to zoom about the cursor, drag to pan, double-click to fit. The viewport refits automatically when the network's <em>structure</em> changes, but not on a reseed, so a deliberate pan is not yanked away.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="dissection">4. Driving the dissection</h2>
+
+<p>
+  <strong>Dissection</strong> in the bottom bar runs one sample through the
+  network in slow motion. The choreography is a sequence of discrete
+  <em>beats</em> rather than a continuous tween, which is what makes true
+  single-stepping and <code>prefers-reduced-motion</code> fall out of the same
+  structure. With motion reduced, the beats simply <em>are</em> the stages.
+</p>
+
+<table>
+  <thead><tr><th>Key</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Space</kbd></td><td>Advance one beat. Mid-beat, the first press finishes the beat you were watching rather than skipping it.</td></tr>
+    <tr><td><kbd>←</kbd></td><td>Back one beat.</td></tr>
+    <tr><td><kbd>K</kbd></td><td>Play / pause.</td></tr>
+    <tr><td>Click a neuron</td><td>Move the detailed card onto it.</td></tr>
+  </tbody>
+</table>
+
+<h3>Navigating the canvas without a mouse</h3>
+<p>
+  Focus the canvas with <kbd>Tab</kbd>. Nothing inside a picture can take focus
+  on its own, so the canvas takes it and interprets the arrow keys itself. Every
+  move is announced to assistive technology, including the value, because
+  position and colour carry the entire interface otherwise.
+</p>
+<table>
+  <thead><tr><th>Key</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Move between columns.</td></tr>
+    <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Move between units in the current column.</td></tr>
+    <tr><td><kbd>Shift</kbd> + <kbd>↑</kbd> <kbd>↓</kbd></td><td>Walk the connections arriving at the current unit.</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Focus the inspector's value field, to type an exact number.</td></tr>
+    <tr><td><kbd>+</kbd> <kbd>−</kbd></td><td>Nudge the selected weight.</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Clear the selection.</td></tr>
+    <tr><td><kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd></td><td>Undo and redo, anywhere in the app.</td></tr>
+  </tbody>
+</table>
+<p class="quiet">
+  Columns do not wrap: the picture has a direction and the traversal respects it.
+  A unit's own connections do wrap, since that is a short closed list you are
+  deliberately cycling through.
+</p>
+
+<p>
+  Speed runs 0.1×–10× on a logarithmic slider, so 0.1× and 10× sit equidistant
+  from 1×. The <strong>sample</strong> stepper wraps.
+</p>
+
+<p>The beat sequence, for an <code>L</code>-layer network:</p>
+<pre><code>input
+  → layer 1 weighted sum → layer 1 activation
+  → …
+  → loss
+  → layer L δ → layer L ∂L/∂w → layer L update
+  → …                                          <span class="c">(right to left)</span>
+  → complete</code></pre>
+
+<div class="note">
+  <strong>One deviation from a literal reading of the design.</strong> The
+  choreography is specified "per neuron". On a 6-unit layer that means six 208px
+  cards competing for a column whose nodes are ~64px apart, and they overlap into
+  illegibility. So a layer resolves as a unit: the full card for one focused
+  neuron, compact <code>z / a</code> chips for its neighbours, and clicking any
+  node moves the focus. Every neuron still gets its card; you choose which one
+  you are reading.
+</div>
+
+<h2 id="encoding">5. Visual encoding, precisely</h2>
+
+<table>
+  <thead><tr><th>Channel</th><th>Encodes</th><th>Mapping</th></tr></thead>
+  <tbody>
+    <tr><td>Edge hue</td><td>Weight sign</td><td><span class="swatch neg"></span><code>#3EC5E8</code> negative · <span class="swatch pos"></span><code>#F2A33C</code> positive</td></tr>
+    <tr><td>Edge width</td><td>|w|</td><td><code>clamp(0.5 + 5.5·|w|/wRef, 0.5, 7)</code>, in <em>screen</em> pixels</td></tr>
+    <tr><td>Edge alpha</td><td>|w|</td><td>Quantized to 32 steps; near-zero fades almost out</td></tr>
+    <tr><td>Node fill</td><td>Activation</td><td>Bounded activations map through their true range; unbounded ones normalize against a smoothed per-layer max</td></tr>
+    <tr><td>Node ring</td><td>|δ|</td><td>Normalized within the layer: "which units here are learning"</td></tr>
+    <tr><td>Pulse radius</td><td>|w·a|</td><td><code>sqrt</code>-scaled so <em>area</em> tracks contribution</td></tr>
+    <tr><td>Hollow node</td><td>Dead unit</td><td>Zero activation across an entire epoch</td></tr>
+    <tr><td>Dashed</td><td>Frozen</td><td>Excluded from updates but still forward-propagating</td></tr>
+  </tbody>
+</table>
+
+<p>
+  <code>wRef</code> is the <strong>95th percentile</strong> of <code>|w|</code>
+  across the network, smoothed exponentially over time. A percentile rather than
+  the maximum, because one runaway weight would otherwise flatten every other
+  edge to invisibility, which is exactly what happens right before a divergence,
+  when the picture matters most. Its current value is printed in the legend.
+</p>
+
+<p>
+  Stroke width is a <em>screen-space</em> quantity and does not scale with zoom:
+  the encoding must mean the same thing however far you have zoomed. Node radii
+  <em>do</em> scale, because a node is an object in the scene rather than an
+  encoding.
+</p>
+
+<h3>Colour-vision safety</h3>
+<p>
+  The two poles were chosen so their OKLab separation <em>increases</em> under
+  simulated deficiency rather than collapsing: 0.26 typical, 0.31 tritanopia,
+  0.36 protanopia, 0.43 deuteranopia, with both clearing 9:1 contrast on the
+  canvas. The dash pattern in colourblind-safe mode is redundancy on top of that,
+  not a rescue. Blue/red was rejected on these measurements; red/green was never
+  a candidate.
+</p>
+
+<h2 id="determinism">6. Determinism</h2>
+
+<p>
+  <code>Math.random()</code> does not appear anywhere in the engine, and the ban
+  is enforced three ways: a TypeScript project that compiles the engine with no
+  DOM lib and no ambient types, a test that scans the source tree, and an ESLint
+  rule.
+</p>
+<p>
+  Randomness comes from <code>mulberry32</code> seeded through a
+  <code>splitmix32</code> expansion, split into four independent named streams:
+</p>
+
+<table>
+  <thead><tr><th>Stream</th><th>Used for</th></tr></thead>
+  <tbody>
+    <tr><td><code>init</code></td><td>Weight initialization</td></tr>
+    <tr><td><code>shuffle</code></td><td>Batch shuffling and the train/validation split</td></tr>
+    <tr><td><code>dropout</code></td><td>Dropout masks</td></tr>
+    <tr><td><code>data</code></td><td>Dataset generation and noise</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Streams are independent <em>and</em> order-insensitive: exercising
+  <code>dropout</code> 500 times does not shift what <code>init</code> produces,
+  and requesting them in a different order changes nothing. Turning dropout on
+  therefore does not perturb your initialization, which is what makes an A/B
+  comparison at a fixed seed meaningful.
+</p>
+<p class="quiet">
+  The splitmix32 expansion exists because a raw seed like <code>1</code> has
+  almost no entropy in its high bits, and nearby seeds would otherwise produce
+  visibly correlated first draws. People type 1, 2, 3.
+</p>
+
+<h2 id="sharing">7. Sharing a network</h2>
+
+<p>
+  <strong>Inspect &rarr; Share &rarr; Copy link</strong> produces a URL that
+  rebuilds everything: the architecture, the dataset and its seed, every
+  hyperparameter, the lesson you had open, and the weights. There is no server
+  involved, and no account. The state is the link.
+</p>
+
+<p>
+  The state travels in the fragment, the part after the <code>#</code>. Browsers
+  strip that before sending a request, so it never reaches a web server or an
+  access log. A query string would have leaked the contents of your link to
+  whoever is hosting the page, for no benefit at all.
+</p>
+
+<h3>Why some links have no weights in them</h3>
+
+<p>
+  A link to a network you have not trained is short, around seven hundred
+  characters, and contains no weights whatsoever. It does not need them.
+  Initialization is seeded and bitwise deterministic, so the seed and the layer
+  sizes regenerate exactly the same numbers on the other machine, down to the
+  last bit.
+</p>
+<p>
+  The encoder does not assume this, it checks it. Before dropping the weights it
+  builds a fresh network from the seed and compares the two parameter blocks
+  byte for byte. If a single bit differs, because you trained, scrubbed a
+  weight, or typed a value in, the weights are included and the link grows to
+  around twelve hundred characters for a small network.
+</p>
+<p>
+  When they are included they are exact: float64, little-endian, no rounding and
+  no compression. Halving the link by shipping float32 would mean the network
+  you opened was not the network that was sent, and that is the one thing this
+  project will not do. The panel tells you which kind of link you just made, and
+  how long it is, since some chat clients truncate above about two thousand
+  characters.
+</p>
+
+<h3>What a link does not carry</h3>
+
+<p>
+  The loss curve. Open a link to a trained network and you get the trained
+  weights and the carved decision boundary, but the epoch counter reads zero and
+  the chart says there is no data yet. That is honest rather than broken: the
+  sender's five hundred epochs of measurements are not in the link, and drawing
+  a plausible curve nobody measured would be a fabrication. Press
+  <strong>Train</strong> and it carries on from the weights you were sent.
+</p>
+<p class="quiet">
+  Nor does it carry your undo stack, your pinned A/B snapshot, or your display
+  preferences. Those are yours, not the network's.
+</p>
+<p>
+  The fragment stays in the address bar after the link opens, so you can
+  bookmark it or copy it onward. That does mean reloading returns you to the
+  shared network rather than to your own edits, but reloading already discards
+  edits, so nothing is lost that would otherwise have survived.
+</p>
+
+<h2 id="batchnorm">8. Batch normalisation</h2>
+
+<p>
+  The switch is in the Architecture panel and applies to the hidden layers, the
+  same granularity dropout uses. Turning it on rebuilds the network, but costs
+  you nothing: &gamma; is filled with ones rather than sampled, so it never
+  touches the initialisation stream, and W and b come back bit-identical at the
+  same seed. Flipping the switch changes exactly one thing, which is what makes
+  comparing its two sides worth anything.
+</p>
+
+<p>Each normalised layer computes:</p>
+
+<pre><code>U = A · W                                  the weighted sum, no bias yet
+Z = &gamma; &middot; (U &minus; &mu;) / &radic;(&sigma;&sup2; + &epsilon;) + b        normalise, scale, shift</code></pre>
+
+<h3>Where did &beta; go?</h3>
+
+<p>
+  Textbooks write the shift as &beta; and drop the dense layer's bias. This
+  implementation does the opposite and keeps the bias, because they are the same
+  parameter. Adding a constant just before a step that subtracts the mean does
+  nothing at all: shift every value in a column by &delta; and &mu; shifts by
+  &delta; too, so U &minus; &mu; is unchanged and the derivative with respect to
+  b is identically zero.
+</p>
+<p>
+  So the bias moves rather than multiplying. It goes from before the activation
+  to after the normalisation, which is exactly where &beta; sits. It keeps its
+  name, its bias satellite on the canvas and its line in the dissection card,
+  and the layer gains one new parameter vector rather than two.
+</p>
+
+<h3>The part people get wrong</h3>
+
+<p>
+  <strong>Training and evaluation are different functions.</strong> While
+  training, a unit is normalised by the mean and variance of the batch it
+  happens to be in, so its output depends on which other samples travelled with
+  it. That is fine for learning and useless for predicting, so the layer also
+  keeps a running average of those statistics and uses that instead once
+  training is over.
+</p>
+<p>
+  This is why a network can post a training loss and a validation loss that
+  disagree on identical data. It is not a bug and it is not overfitting: the two
+  numbers were computed by two different functions. The dissection card tells you
+  which of the two it used, and the inspector shows the running estimates
+  alongside &gamma;.
+</p>
+<p class="quiet">
+  Two variances are involved, deliberately. The one that normalises the batch
+  divides by B, because that is what makes the result have unit variance within
+  the batch. The one that feeds the running average divides by B minus 1,
+  because there it is estimating a population rather than describing a sample.
+</p>
+
+<h3>Small batches</h3>
+
+<p>
+  A batch of one has no spread of its own. Normalising a single sample by its own
+  statistics would map every unit to exactly zero and cut the gradient at that
+  layer, silently, and the last batch of an epoch can easily hold one sample. So
+  a batch of one is normalised by the running estimate instead, in training too,
+  and contributes nothing back to it.
+</p>
+<p>
+  At a batch of two the normalised value is pinned to plus or minus one whatever
+  the inputs do, which is worth knowing if you are experimenting: batch norm has
+  very little to work with down there.
+</p>
+
+<h3>Checking it</h3>
+
+<p>
+  The gradient check covers &gamma; and runs the same matrix at batch sizes six,
+  two and one. Turn on Dissection and step through a normalised neuron: the card
+  shows the weighted sum, then the normalisation, then &gamma;, then the bias,
+  and the running total on the right reaches the engine's own z. The residual is
+  checked across every unit, exactly as it is for a plain layer.
+</p>
+
+<h2 id="numerics">9. Numerical decisions worth knowing</h2>
+
+<ul>
+  <li>
+    <strong>float64 throughout.</strong> These networks have tens of parameters,
+    so there is no memory argument for float32, and the gradient check needs the
+    headroom.
+  </li>
+  <li>
+    <strong>Stable sigmoid.</strong> <code>z ≥ 0</code> uses
+    <code>1/(1+e⁻ᶻ)</code>; <code>z &lt; 0</code> uses <code>eᶻ/(1+eᶻ)</code>.
+    Neither branch ever exponentiates a positive argument.
+  </li>
+  <li>
+    <strong>Row-max-shifted softmax.</strong> Algebraically a no-op, but it caps
+    the largest exponent at <code>e⁰</code>, so a logit of 1000 yields a
+    probability instead of <code>Infinity/Infinity</code>.
+  </li>
+  <li>
+    <strong>Clamped logarithms.</strong> <code>log(max(x, 1e-12))</code>
+    everywhere. An unclamped <code>log(0)</code> destroys the loss curve even
+    when the gradients are fine.
+  </li>
+  <li>
+    <strong>Momentum uses the accumulate-then-scale form</strong>
+    (<code>v ← μv + g; θ ← θ − ηv</code>). The alternative folds η into the
+    velocity and rescales the effective learning rate by <code>1/(1−μ)</code>.
+  </li>
+  <li>
+    <strong>Adam's bias correction is not optional.</strong> At <code>t = 1</code>
+    the corrected update reduces to exactly <code>−η·sign(g)</code> regardless of
+    <code>|g|</code>; that cancellation is the signature of getting it right, and
+    the test pins it there.
+  </li>
+  <li>
+    <strong>Freezing uses a skip mask, not a zeroed gradient.</strong> A momentum
+    or Adam state carries a parameter forward on accumulated velocity even when
+    its gradient is zero, so zeroing would let a "frozen" parameter drift.
+  </li>
+  <li>
+    <strong>L2 never touches biases.</strong> Asserted by comparing
+    <code>db</code> bit-for-bit at λ = 0 and λ = 0.5.
+  </li>
+</ul>
+
+<div class="note warn">
+  <strong>A behaviour that surprises people.</strong> A <code>tanh</code> hidden
+  layer with a fused <code>sigmoid</code>/<code>bce</code> output <em>cannot</em>
+  diverge to NaN, at any learning rate. <code>dZ = ŷ − y</code> is bounded in
+  [−1, 1] and tanh saturates, so the network stalls rather than exploding. To see
+  a genuine divergence you need ReLU or an unbounded regression head. There is a
+  test pinning this so it is not rediscovered the hard way.
+</div>
+
+<h2 id="scope">10. What is and is not implemented</h2>
+
+<p><strong>Implemented and tested:</strong></p>
+<ul>
+  <li>Forward and backward passes; fused and general output paths</li>
+  <li>Activations: linear, relu, leaky_relu, tanh, sigmoid, softmax</li>
+  <li>Losses: mse, bce, cce</li>
+  <li>Initialization: Glorot uniform, He normal, LeCun normal, normal, uniform, zeros, constant</li>
+  <li>Optimizers: SGD, Momentum, Nesterov, RMSProp, Adam, AdamW</li>
+  <li>LR schedules: constant, step, exponential, cosine, composable warmup</li>
+  <li>L2, inverted dropout, gradient clipping by global norm</li>
+  <li>Batch normalisation, with separate training and evaluation statistics</li>
+  <li>Batching with a kept partial batch, stratified splits, standardization (with a deliberate-leak option)</li>
+  <li>Early stopping with best-weight restore; divergence as a reported state</li>
+  <li>Metrics: loss, accuracy, precision/recall, confusion matrix, per-layer gradient norms, dead units, saturation</li>
+  <li>Ten procedural datasets, including 7×5 glyphs</li>
+  <li>Training in a Web Worker, off the main thread</li>
+  <li>Canvas rendering, hit-testing, pan/zoom, and the dissection view</li>
+</ul>
+
+<p><strong>Also implemented, with an interface:</strong> live training with a
+loss curve, the decision boundary, per-neuron activation maps, the diagnostics
+panel, the live math tab, weight scrubbing, undo/redo, the history scrubber with
+an A/B weight diff, all twelve lessons, NumPy / JavaScript / PNG export, and
+URL-encoded shareable state.</p>
+
+<p><strong>Deliberately not implemented:</strong> three of the optional
+extensions were declined rather than skipped. A convolution demo and a recurrent
+network would each be a second architecture family with its own visual language,
+sharing a header with this one rather than belonging to it. WebGPU acceleration
+would put a GPU path behind a claim of plain float64 arrays, to speed up
+networks of a few hundred parameters that already train faster than you can
+watch. The other two, batch normalisation and shareable links, were built.</p>
+
+<p class="quiet">
+  <code>docs/MATH.md</code> in the repository maps every equation to the function
+  that implements it. <code>docs/DESIGN.md</code> is the token system and the
+  reasoning behind the palette. <code>docs/ARCHITECTURE.md</code> covers the
+  threading model and how the layers are kept apart.
+</p>
+
+</main>
+</body>
+</html>

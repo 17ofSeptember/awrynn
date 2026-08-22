@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+*.local
+.DS_Store
+.vite
+node_modules/.tmp
+*.tsbuildinfo
+prompt.md
+_scratch/
+.claude/settings.local.json

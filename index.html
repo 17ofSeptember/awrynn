@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) resolve to
+         anything; without it the drawer sits under the home indicator.
+         Zoom is deliberately NOT disabled: pinch-to-zoom the page is an
+         accessibility affordance, and the canvas suppresses its own gestures
+         with touch-action instead. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark" />
+    <title>AwryNN</title>
+    <meta
+      name="description"
+      content="An interactive neural network laboratory. Watch a network think, and watch it learn."
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
