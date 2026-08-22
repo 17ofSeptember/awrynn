@@ -1,49 +1,21 @@
-AwryNN License
+MIT License
 
-Copyright (c) 2026 AwryNN
+Copyright (c) 2026 17ofSeptember
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
-
-2. THE CAT CONDITION. The Software, and any work derived from or built with the
-   Software, shall not be used to cause harm, distress or fear to a cat.
-
-   For the avoidance of doubt, and in the spirit in which this condition is
-   given:
-
-   a. "A cat" means any member of the family Felidae, domestic or otherwise.
-      Housecats, farm cats, strays, ships' cats, lions, lynxes and one
-      particularly disagreeable tabby of your acquaintance are all included.
-
-   b. "Harm, distress or fear" means what a reasonable cat would consider harm,
-      distress or fear. The cat is the authority on this, not you.
-
-   c. The following do not breach this condition: veterinary care, however
-      poorly received; the administration of medicine; transport in a carrier;
-      the closing of a door the cat wished to remain open; and the withholding
-      of food at hours the cat considers appropriate but the clock does not.
-
-   d. Being ignored is not distress. It is a negotiating position.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR OTHER DEALINGS IN THE SOFTWARE.
-
----
-
-A NOTE ON THE BUNDLED FONTS
-
-This license covers the source code and documentation of AwryNN. It does not
-cover the bundled typefaces. Space Grotesk, IBM Plex Sans and IBM Plex Mono are
-distributed under the SIL Open Font License 1.1, whose terms are reproduced in
-public/fonts/OFL.txt and continue to apply to those files.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
