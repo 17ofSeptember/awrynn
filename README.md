@@ -23,7 +23,7 @@ interface shows is a number the engine actually computed.**
 You need [Node.js](https://nodejs.org) 20.19+ or 22.12+. Nothing else.
 
 ```bash
-git clone https://github.com/<you>/AwryNN.git
+git clone https://github.com/17ofSeptember/AwryNN.git
 cd AwryNN
 npm install
 npm run dev
