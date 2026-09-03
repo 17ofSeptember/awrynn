@@ -2,6 +2,9 @@
 
 **A neural network you can watch think.**
 
+<img width="677" height="369" alt="image" src="https://github.com/user-attachments/assets/35601c56-3a2b-497d-b00e-9ce4523e00c7" />
+
+
 A real feedforward network, implemented from scratch in TypeScript, rendered on a
 canvas you can pause, step through, take apart and break on purpose. No ML
 library. No backend. No network requests at runtime.
